@@ -1,0 +1,37 @@
+#!/bin/bash
+HERE="$(dirname "$(readlink -f "$0")")"
+USR="$HERE/usr"
+
+# bundled legacy libs go AFTER nothing: prepend so they win over host's newer ones,
+# but GL/glibc/libstdc++ are deliberately not in the bundle (host provides them).
+export LD_LIBRARY_PATH="$USR/lib-deps:$USR/lib:${LD_LIBRARY_PATH:-}"
+
+# Host 32-bit Mesa (Arch: lib32-mesa) drivers
+export LIBGL_DRIVERS_PATH="${LIBGL_DRIVERS_PATH:-/usr/lib32/dri}"
+
+# Old bundled fontconfig/GTK must not read the host's modern configs or 64-bit modules
+export FONTCONFIG_FILE="$USR/etc/fonts/fonts.conf"
+export FONTCONFIG_PATH="$USR/etc/fonts"
+export GTK_PATH="$USR/lib/gtk-2.0"
+export GTK2_RC_FILES="${PCSX2_GTK_RC:-$USR/share/themes/PCSX2-Dark/gtk-2.0/gtkrc}"
+export GIO_MODULE_DIR="$USR/lib/gio-empty"
+
+# Pango 1.30: point it at the bundled modules via a module list generated for this mount path
+PANGO_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/pcsx2-appimage"
+mkdir -p "$PANGO_DIR"
+sed "s#@PANGO_MODS@#$USR/lib/pango/1.6.0/modules#g" "$USR/lib/pango/pango.modules.in" > "$PANGO_DIR/pango.modules"
+printf '[Pango]\nModuleFiles=%s\n' "$PANGO_DIR/pango.modules" > "$PANGO_DIR/pangorc"
+export PANGO_RC_FILE="$PANGO_DIR/pangorc"
+export PANGO_LIBDIR="$USR/lib"
+
+# Keep config in the normal PCSX2 location
+export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+
+# Release builds produce "pcsx2", Devel builds "pcsx2-dev"
+BIN=$(find "$USR" -maxdepth 3 -type f \( -name 'pcsx2' -o -name 'pcsx2-dev' \) -perm -u+x | sort | tail -n1)
+cd "$(dirname "$BIN")"
+if [ "${PCSX2_GDB:-}" = "1" ]; then
+  # Debug: run under gdb and print a backtrace when it crashes
+  exec gdb -batch -ex "handle SIGPIPE nostop noprint" -ex run -ex "bt 8" -ex "frame 1" -ex "info locals" -ex "info args" --args "$BIN" "$@"
+fi
+exec "$BIN" "$@"

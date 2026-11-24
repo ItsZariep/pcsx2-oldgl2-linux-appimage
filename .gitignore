@@ -1,0 +1,4 @@
+out
+src-pcsx2
+*.AppImage
+squashfs-root
