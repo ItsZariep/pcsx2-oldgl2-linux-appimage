@@ -31,7 +31,14 @@ export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 BIN=$(find "$USR" -maxdepth 3 -type f \( -name 'pcsx2' -o -name 'pcsx2-dev' \) -perm -u+x | sort | tail -n1)
 cd "$(dirname "$BIN")"
 if [ "${PCSX2_GDB:-}" = "1" ]; then
-  # Debug: run under gdb and print a backtrace when it crashes
-  exec gdb -batch -ex "handle SIGPIPE nostop noprint" -ex run -ex "bt 8" -ex "frame 1" -ex "info locals" -ex "info args" --args "$BIN" "$@"
+	LLP="$LD_LIBRARY_PATH"
+	unset LD_LIBRARY_PATH
+	exec gdb -batch \
+		-ex "set startup-with-shell off" \
+		-ex "set environment LD_LIBRARY_PATH=$LLP" \
+		-ex "handle SIGPIPE nostop noprint" \
+		-ex "set breakpoint pending on" \
+		-ex run -ex "bt 25" -ex "info sharedlibrary" \
+		--args "$BIN" "$@"
 fi
 exec "$BIN" "$@"

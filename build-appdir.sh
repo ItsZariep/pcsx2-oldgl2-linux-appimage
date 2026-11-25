@@ -37,7 +37,7 @@ cd "$SRC"
 
 # "inlining failed ... function body can be overwritten at link time":
 # demote forced inlining to plain inline in the pad plugins.
-for f in plugins/zeropad/*.cpp plugins/zeropad/*.h plugins/onepad/*.cpp plugins/onepad/*.h; do
+for f in plugins/zeropad/*.cpp plugins/zeropad/*.h; do
 	[ -f "$f" ] || continue
 	sed -i \
 		-e 's/__attribute__[[:space:]]*((always_inline))/ /g' \
@@ -46,6 +46,18 @@ for f in plugins/zeropad/*.cpp plugins/zeropad/*.h plugins/onepad/*.cpp plugins/
 		"$f"
 done
 grep -n "FindKey" plugins/zeropad/keyboard.cpp | head -n3 || true
+
+# onepad: drop forced inlining entirely, so every function keeps an out-of-line body
+# (fixes undefined _Z11type_of_keyii = type_of_key(int,int))
+for f in plugins/onepad/*.cpp plugins/onepad/*.h; do
+	[ -f "$f" ] || continue
+	sed -i \
+		-e 's/__attribute__[[:space:]]*((always_inline))/ /g' \
+		-e 's/__attribute__[[:space:]]*((always_inline,[^)]*))/ /g' \
+		-e 's/\b__forceinline\b//g' \
+		"$f"
+done
+grep -rn "type_of_key" plugins/onepad | head
 
 # getpagesize() needs <unistd.h>, do it per-file (a global -include breaks the .S assembler files)
 for f in $(grep -rlE '\b(usleep|getpagesize|sysconf|getcwd|chdir|unlink|isatty|ftruncate|getpid|lseek|fsync)[[:space:]]*\(' \
@@ -70,11 +82,13 @@ fi
 if [ -f CMakeLists.txt ]; then
 	echo ">> CMake build system detected"
 	mkdir -p "build-$BUILD_TYPE" && cd "build-$BUILD_TYPE"
+	# GSdx requires internal SDL
 	cmake .. \
 		-DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
 		-DCMAKE_INSTALL_PREFIX="$PREFIX" \
 		-Wno-dev \
 		-DCMAKE_CXX_FLAGS="$CXXFLAGS" -DCMAKE_C_FLAGS="$CFLAGS"
+		# -DFORCE_INTERNAL_SDL=TRUE \  # Using this causes many errors, still not solved
 	make -j"$JOBS"
 	# 0.9.8 has no install rule: outputs go to $SRC/bin
 	echo ">> CMake options of interest:"

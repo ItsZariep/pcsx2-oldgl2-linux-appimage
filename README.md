@@ -12,13 +12,13 @@ Tested on hardware such as **Intel Core 2 Duo P8600 + GMA 4500**, software is **
 
 ## Why This Exists
 
-Modern PCSX2 versions require newer OpenGL capabilities and modern toolchains, while legacy 32-bit releases depend on older libraries that are awkward to piece together oReleases page, you can use `--appimage-extract` for a tarball-like setun current distros. This project provides a reproducible build environment and targeted source patches without bundling PCSX2's own source code.
+Modern PCSX2 versions require newer OpenGL capabilities and modern toolchains, while legacy 32-bit releases depend on older libraries that are awkward to piece together on current distros. This project provides a reproducible build environment and targeted source patches without bundling PCSX2's own source code.
 
-This is obviously mostly aiming to play PS2 2D or very light 3D games because most GL2 class would have a very poor 3D performance.
+This is obviously mostly aiming to play PS2 2D or very light 3D games because most GL2 class hardware would have a very poor 3D performance.
 
 ## Downloads
 
-pre-built AppImages are available on p.
+pre-built AppImages are available on [Releases page](https://github.com/ItsZariep/pcsx2-098-linux-appimage/releases), you can use `--appimage-extract` for a tarball-like set
 
 ## Requirements
 
@@ -32,40 +32,23 @@ sudo pacman -S --needed \
   lib32-alsa-lib lib32-libpulse lib32-libdrm lib32-libxdamage lib32-libxfixes
 ```
 
-## Usage
+## Build
 
-### 1. Build the container image
+Builds are assisted by a Makefile
 
-```sh
-docker build -t pcsx2-098 .
-```
 
-### 2. Build `PCSX2.AppDir`
+### Release
 
 ```sh
-mkdir -p out src-pcsx2
-docker run --rm \
-  -e HOST_UID="$(id -u)" \
-  -e HOST_GID="$(id -g)" \
-  -v "$PWD/out:/out" \
-  -v "$PWD/src-pcsx2:/src/pcsx2" \
-  pcsx2-098
+make
 ```
 
-The resulting bundle is written to `./out/PCSX2.AppDir` (and can be run via `./out/PCSX2.AppDir/AppRun` or packaged into an `.AppImage` with `appimagetool`).
-
-### 3. Debug build (`Devel`)
+### Debug build (`Devel`)
 
 Includes debug symbols and assertions:
 
 ```sh
-docker run --rm \
-  -e BUILD_TYPE=Devel \
-  -e HOST_UID="$(id -u)" \
-  -e HOST_GID="$(id -g)" \
-  -v "$PWD/out:/out" \
-  -v "$PWD/src-pcsx2:/src/pcsx2" \
-  pcsx2-098
+make debug
 ```
 
 To run with an automatic backtrace on crash:
@@ -73,6 +56,15 @@ To run with an automatic backtrace on crash:
 ```sh
 PCSX2_GDB=1 ./out/PCSX2.AppDir/AppRun
 ```
+
+The resulting bundle is written to `./out/PCSX2.AppDir`
+
+### Package (AppImage)
+
+```sh
+make appimage
+```
+
 
 ## Disclaimer
 
